@@ -13,7 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
-const Groq_API_KEY = "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";
+const Groq_API_KEY = "sk-go4LrCKJjJZX2XoAXNJKb8TAQmuzJxArqNROFbFWVqyxmFFg";
 
 let currentUser = null;
 let userProfileData = null;
@@ -24,7 +24,7 @@ auth.onAuthStateChanged(user => {
   if (user) {
     currentUser = user;
     db.ref('users/' + user.uid).once('value').then(snapshot => {
-      userProfileData = snapshot.val() || { name: user.displayName || 'طالب زتونة', grade: '', stream: '', specialSubject: '', credits: 3 };
+      userProfileData = snapshot.val() || { name: user.displayName || 'طالب زتونة', grade: '', stream: '', specialSubject: '', credits: 5 };
       
       if (!userProfileData.grade) {
         document.getElementById('gradeModal').classList.remove('hidden');
@@ -262,7 +262,6 @@ function handlePDFUpload(e) {
   reader.onload = function() {
     const typedarray = new Uint8Array(this.result);
     pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-      // قراءة كل صفحات الكتاب المرفق للترم الأول (حتى 100 صفحة أو أكثر لضمان شمول المنهج)
       let maxPages = Math.min(pdf.numPages, 120);
       let textPromises = [];
       for (let i = 1; i <= maxPages; i++) {
@@ -285,7 +284,7 @@ function handlePDFUpload(e) {
   reader.readAsArrayBuffer(file);
 }
 
-// --- 6. تنفيذ الذكاء الاصطناعي مع الاعتماد على سياق المنهج الكامل ---
+// --- 6. تنفيذ الذكاء الاصطناعي مع دعم التابلت وتخطي حظر الـ CORS ---
 async function triggerAI(actionType, subject) {
   if (userProfileData.credits <= 0) {
     showSubModal();
@@ -293,7 +292,6 @@ async function triggerAI(actionType, subject) {
   }
 
   let textInput = document.getElementById('lessonTextInput').value.trim();
-  // لو الطالب لم يرفع كتاب الترم كاملاً، نأخذ النص المكتوب، ولكن الأفضل رفع كتاب الترم في البداية
   let contextText = pdfExtractedText || textInput;
 
   if (!contextText) {
@@ -307,20 +305,19 @@ async function triggerAI(actionType, subject) {
   
   outputBox.classList.remove('hidden');
   examContainer.classList.add('hidden');
-  content.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> جاري استرجاع المعلومات من منهج الترم وتحضير المحتوى بدقة...</p>';
+  content.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> جاري توليد المحتوى بسرعة فائقة...</p>';
 
   let difficulty = 'عادي';
   if (actionType === 'exam') {
     difficulty = prompt("اختر مستوى صعوبة الامتحان (عادي / مستويات عليا):", "عادي") || "عادي";
   }
 
-  // برومبت ذكي وحاسم يضمن الاعتماد الكلي على محتوى كتاب الترم المرفق وعدم الهلوسة
   let promptText = `أنت أستاذ ومعلم خبير متمكن 100% في المنهج التعليمي المصري لصف (${userProfileData.grade}) - شعبة (${userProfileData.stream}).
 المادة: ${subject}.
 
 قواعد الإجابة الصارمة:
-1. لقد تم تزويدك بمحتوى كتاب الترم الأول كاملاً أدناه. يجب أن تستند في كل إجاباتك، شروحاتك، تلخيصاتك، وأسئلتك حصرياً وبدقة متناهية على هذا المحتوى الرسمي ولا تقم بتأليف معلومات من خارج المقررات.
-2. التزم بأسلوب المنهج المصري المدرسي مباشرة.
+1. استند حصرياً وبدقة متناهية على محتوى كتاب الترم الأول المرفق أدناه ولا تقم بتأليف معلومات خارجية.
+2. التزم بأسلوب المنهج المدرسي مباشرة.
 
 محتوى كتاب / منهج الترم الأول المعتمد:
 """
@@ -350,19 +347,28 @@ ${contextText}
 ]`;
   }
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`;
+  // استخدام CORS Proxy لتخطي قيود متصفح التابلت وضمان العمل الفوري
+  const targetUrl = "https://api.groq.com/openai/v1/chat/completions";
+  const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
 
   try {
-    const response = await fetch(apiUrl, {
+    const response = await fetch(proxyUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Groq_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: promptText }],
+        stream: false
+      })
     });
 
     const data = await response.json();
 
-    if (data && data.candidates && data.candidates.length > 0) {
-      let resultText = data.candidates[0].content.parts[0].text;
+    if (data && data.choices && data.choices.length > 0) {
+      let resultText = data.choices[0].message.content;
 
       if (actionType === 'exam') {
         try {
@@ -382,11 +388,12 @@ ${contextText}
       db.ref('users/' + currentUser.uid).update({ credits: userProfileData.credits });
 
     } else {
-      content.innerHTML = '<p style="color:var(--gold-accent);">حدث خطأ في استجابة الخادم، حاول مرة أخرى.</p>';
+      content.innerHTML = '<p style="color:var(--gold-accent);">حدث خطأ في استجابة الخادم، تأكد من صحة المفتاح.</p>';
     }
 
   } catch (err) {
-    content.innerHTML = '<p style="color:var(--gold-accent);">خطأ في الاتصال بالشبكة.</p>';
+    content.innerHTML = '<p style="color:var(--gold-accent);">خطأ في الاتصال بالشبكة من خلال التابلت.</p>';
+    console.error(err);
   }
 }
 
@@ -452,7 +459,6 @@ function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle = 'rgba(107, 142, 35, 0.12)';
   ctx.beginPath();
-  particles.files = []; // safe guard
   particles.forEach(p => {
     ctx.moveTo(p.x, p.y);
     ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
