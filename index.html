@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>منصة زتونة التعليمية | Zatona</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- Header -->
+  <header class="main-header">
+    <div class="logo-container">
+      <i class="fas fa-seedling olive-icon"></i>
+      <h1>زتونة <span style="font-size: 0.5em; color: var(--gold-accent);">Zatona</span></h1>
+    </div>
+    <div id="userHeaderActions"></div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+    
+    <!-- Auth Section -->
+    <section id="authSection" class="card-box">
+      <div class="tabs">
+        <button id="tabLogin" class="tab-btn active" onclick="switchAuthTab('login')">تسجيل الدخول</button>
+        <button id="tabRegister" class="tab-btn" onclick="switchAuthTab('register')">حساب جديد</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" onsubmit="handleEmailLogin(event)">
+        <div class="input-group">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" required>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="loginPassword" placeholder="كلمة المرور" required>
+        </div>
+        <button type="submit" class="primary-btn">دخول</button>
+        <button type="button" class="google-btn" onclick="handleGoogleAuth()"><i class="fab fa-google"></i> الدخول بجوجل</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="registerForm" class="hidden" onsubmit="handleEmailRegister(event)">
+        <div class="input-group">
+          <i class="fas fa-user"></i>
+          <input type="text" id="regName" placeholder="اسم الطالب الكامل" required>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="regEmail" placeholder="البريد الإلكتروني" required>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="regPassword" placeholder="كلمة المرور" required>
+        </div>
+        <button type="submit" class="primary-btn">إنشاء الحساب</button>
+      </form>
+    </section>
+
+    <!-- App Workspace -->
+    <section id="appWorkspace" class="hidden">
+      
+      <!-- Top Control Bar -->
+      <div class="workspace-bar card-box">
+        <div class="select-wrapper">
+          <label><i class="fas fa-book"></i> المادة الدراسية المتاحة لصفك:</label>
+          <select id="subjectSelect" onchange="onSubjectChange()">
+            <option value="">-- اختر المادة --</option>
+          </select>
+        </div>
+
+        <div class="credits-box">
+          <i class="fas fa-coins" style="color: var(--gold-accent);"></i>
+          <span>المحاولات المتبقية: <strong id="creditsLeft">3</strong></span>
+          <button onclick="showSubModal()" class="upgrade-btn">شحن المحاولات</button>
+        </div>
+      </div>
+
+      <!-- Input Source Tab (Text or PDF) -->
+      <div class="card-box input-section">
+        <div class="input-tabs">
+          <button id="btnTabText" class="tab-sub-btn active" onclick="switchInputTab('text')">كتابة اسم الدرس / الموضوع</button>
+          <button id="btnTabPDF" class="tab-sub-btn" onclick="switchInputTab('pdf')">رفع ملف PDF للدرس</button>
+        </div>
+
+        <div id="inputTextBox" class="input-content-box">
+          <textarea id="lessonTextInput" placeholder="اكتب هنا اسم الدرس أو الصق المحتوى التعليمي المطلوب..."></textarea>
+        </div>
+
+        <div id="inputPDFBox" class="input-content-box hidden">
+          <label class="file-upload-label">
+            <i class="fas fa-file-pdf fa-2x"></i>
+            <span id="fileNameDisplay">اضغط هنا لرفع ملف PDF الخاص بالدرس</span>
+            <input type="file" id="pdfFileInput" accept="application/pdf" onchange="handlePDFUpload(event)" style="display:none;">
+          </label>
+        </div>
+      </div>
+
+      <!-- Dynamic Actions Grid -->
+      <div class="card-box">
+        <h3 style="margin-bottom: 15px; color: var(--gold-accent);"><i class="fas fa-bolt"></i> أدوات الزتونة الذكية:</h3>
+        <div id="actionsGrid" class="actions-grid"></div>
+      </div>
+
+      <!-- AI Output & Interactive Exam Section -->
+      <div id="outputSection" class="card-box hidden" style="margin-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(212,175,55,0.3); padding-bottom: 10px; margin-bottom: 15px;">
+          <h3 style="color: var(--gold-accent);"><i class="fas fa-brain"></i> مخرجات الذكاء الاصطناعي:</h3>
+          <div>
+            <button onclick="copyOutput()" class="secondary-btn"><i class="fas fa-copy"></i> نسخ النص</button>
+          </div>
+        </div>
+        <div id="aiOutputContent" class="output-text-area"></div>
+        <div id="interactiveExamContainer" class="hidden" style="margin-top: 15px;"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Subscription Modal (تحويل المحفظة الإلكترونية) -->
+  <div id="subModal" class="modal hidden">
+    <div class="modal-content card-box">
+      <span class="close-btn" onclick="closeSubModal()">&times;</span>
+      <h2><i class="fas fa-wallet" style="color: var(--gold-accent);"></i> شحن رصيد المحاولات</h2>
+      <p style="margin: 15px 0; line-height: 1.6;">لتجديد محاولاتك، يرجى تحويل مبلغ <strong>200 جنيه</strong> عبر محفظة فودافون كاش أو المحافظ الإلكترونية على الرقم التالي:</p>
+      <div class="wallet-number-box">01000000000</div>
+      <p style="margin-top: 15px; font-size: 0.9em; color: #ccc;">ثم أرسل لقطة الشاشة لرقم الواتساب الخاص بالدعم الفني لتفعيل حسابك فوراً.</p>
+    </div>
+  </div>
+
+  <!-- Modal لتحديد المرحلة والمسار والمادة التخصصية (تحديد ثابت يحفظ مرة واحدة) -->
+  <div id="gradeModal" class="modal hidden">
+    <div class="modal-content card-box" style="text-align: right;">
+      <h2 style="text-align:center; color:var(--gold-accent);">إعداد حساب طالب زتونة 🫒</h2>
+      <p style="margin: 10px 0; font-size:0.9rem; color:#ccc; text-align:center;">اختر بياناتك التعليمية بدقة (هذه الاختيارات ثابتة ولا تتغير لاحقاً):</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 15px; margin-top:15px;">
+        <div>
+          <label style="color:var(--gold-accent);">الصف الدراسي:</label>
+          <select id="modalGradeSelect" onchange="onGradeModalChange()">
+            <option value="">-- اختر الصف --</option>
+            <option value="ثالثة إعدادي">الصف الثالث الإعدادي</option>
+            <option value="ثانية باكالوريا">الثانية باكالوريا (2 BAC)</option>
+            <option value="ثالثة ثانوي">الصف الثالث الثانوي</option>
+          </select>
+        </div>
+
+        <div id="modalStreamBox" class="hidden">
+          <label style="color:var(--gold-accent);">الشعبة / المسار:</label>
+          <select id="modalStreamSelect" onchange="onModalStreamChange()">
+            <option value="">-- اختر الشعبة / المسار --</option>
+          </select>
+        </div>
+
+        <div id="modalSpecSubjectBox" class="hidden">
+          <label style="color:var(--gold-accent);">المادة التخصصية الثابتة:</label>
+          <select id="modalSpecSubjectSelect"></select>
+        </div>
+
+        <button class="primary-btn" onclick="saveUserSetupPermanent()" style="margin-top:10px;">حفظ وتثبيت البيانات</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer with Developer Attribution & Social Links -->
+  <footer class="main-footer-bar">
+    <p>جميع الحقوق محفوظة © منصة زتونة التعليمية | تطوير المطور: <strong>ENG / جرجس مجيد</strong></p>
+    <div class="social-links">
+      <a href="https://facebook.com" target="_blank"><i class="fab fa-facebook"></i> فيسبوك</a>
+      <a href="https://instagram.com" target="_blank"><i class="fab fa-instagram"></i> انستجرام</a>
+    </div>
+  </footer>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
