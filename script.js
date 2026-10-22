@@ -13,7 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
-const Groq_API_KEY = "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";
+const Groq_API_KEY = "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";
 
 let currentUser = null;
 let userProfileData = null;
